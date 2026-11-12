@@ -3,6 +3,13 @@
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [2.6.1] - 2026-11-12
+
+### 变更
+- 版本号更新为 **2.6.1**，与 MeteorMaster 的 `MetDetPy2` 2.6.1 引擎槽位配套；
+  识别算法、CLI 参数、stdout JSON 协议均无变化。
+- 构建产物为 onedir 目录形态（`index.dist/`），用于宿主集成与 `index.exe` 代码签名。
+
 ## [2.6.0] - 2026-11-12
 
 ### 新增

@@ -64,6 +64,10 @@ jobs:
           (Get-Item dist\index.dist\index.exe).VersionInfo |
             Format-List ProductName, ProductVersion, FileVersion
 
+      - name: 预签名自检（布局/版本/哈希/无模型）
+        shell: pwsh
+        run: .\scripts\verify_release.ps1
+
       - name: 上传未签名 zip（SignPath 签名前必须已有 artifact）
         id: upload-unsigned
         uses: actions/upload-artifact@v4

@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Build Windows (onedir)](https://github.com/mordom0404/Meteor-Master-Detecter-AI/actions/workflows/build-windows.yml/badge.svg)](https://github.com/mordom0404/Meteor-Master-Detecter-AI/actions/workflows/build-windows.yml)
 
-内置的图像检测器（YOLOv8 → ONNX Runtime）。**当前版本：2.6.0**。
+内置的图像检测器（YOLOv8 → ONNX Runtime）。**当前版本：2.6.1**。
 
 > **开源范围**：本仓库开源引擎代码（[MIT](LICENSE)），**不开源模型权重**。
 > 引擎本身不含模型，运行时用 `--onnx_path` 指定；模型说明见 [docs/models.md](docs/models.md)。
@@ -25,7 +25,7 @@
 1. 下载 zip 并核对哈希（Release 里同时提供 zip 与 exe 的 `.sha256`）：
 
    ```powershell
-   Get-FileHash .\MeteorMasterDetecterAI-2.6.0-win-onedir.zip -Algorithm SHA256
+   Get-FileHash .\MeteorMasterDetecterAI-2.6.1-win-onedir.zip -Algorithm SHA256
    Get-FileHash .\index.dist\index.exe -Algorithm SHA256
    ```
 
@@ -135,13 +135,15 @@ python build.py --mode onedir --zip
   这是代码签名（SignPath / signtool）的前置条件；版本号来自 `index.py` 的 `VERSION`；
 - onedir 不经过 onefile 引导层，**不需要** `nuitka-patches` 的 MSIX/APPX 补丁，`build.py` 会自动跳过；
 - 签名只签 `dist/index.dist/index.exe`（依赖 DLL 是上游 OSS 二进制，不要重签），
-  签名会改变哈希，用 `scripts/sign_index.ps1` 重新生成 SHA256。详见 [docs/signing.md](docs/signing.md)。
+  签名会改变哈希，用 `scripts/sign_index.ps1` 重新生成 SHA256。详见 [docs/signing.md](docs/signing.md)；
+- 每次发版/签名前先跑 `scripts/verify_release.ps1` 自检（zip 布局、exe 版本资源、`--version`、
+  `--licenses`、哈希、zip 内无模型权重）；申请免费签名前见 [docs/signpath-readiness.md](docs/signpath-readiness.md)。
 
 手写等价命令（仅参考，完整参数见 `build.py`）：
 
 ```bash
 nuitka --standalone --lto=no --show-progress --output-dir=dist \
-  --windows-product-name=MeteorMasterDetecterAI --windows-product-version=2.6.0.0 --windows-file-version=2.6.0.0 \
+  --windows-product-name=MeteorMasterDetecterAI --windows-product-version=2.6.1.0 --windows-file-version=2.6.1.0 \
   index.py
 ```
 
@@ -153,7 +155,7 @@ nuitka --standalone --lto=no --show-progress --output-dir=dist \
 python build.py --mode onefile
 ```
 
-`build.py` 在 onefile 模式使用固定的用户缓存路径 `{CACHE_DIR}/MeteorMasterDetector/2.6.0-build1`。
+`build.py` 在 onefile 模式使用固定的用户缓存路径 `{CACHE_DIR}/MeteorMasterDetector/2.6.1-build1`。
 发布新构建（包括依赖变化）时 bump `MMAD_BUILD_TAG` 或 `index.py` 的 `VERSION`，避免不同构建共用缓存；
 旧缓存不会自动清理，可手动删除。
 
@@ -260,7 +262,7 @@ python build.py --mode onedir --zip
 
 启动后：
 
-1. stdout 立刻输出 `{"type":"starting",...,"version":"2.6.0"}`（模型还没好）
+1. stdout 立刻输出 `{"type":"starting",...,"version":"2.6.1"}`（模型还没好）
 2. 模型加载完输出 `{"type":"ready",...,"debounce_ms":300}`（可以开始处理了）
 3. 往 `D:/images` 里复制 / 新建任何 jpg，约 300ms debounce 后 stdout 输出一行识别结果 JSON
 4. 进程长驻直到 SIGTERM / SIGKILL
@@ -413,8 +415,8 @@ private_screenshot.jpg
 
 | 消息 | 触发时机 | MMA 端建议处理 |
 |------|---------|---------------|
-| `{"type":"starting","folder":...,"version":"2.6.0"}` | 引擎启动、模型加载前 | 显示"加载模型中"，禁用"停止"按钮（避免模型未加载完被打断） |
-| `{"type":"ready","folder":...,"version":"2.6.0","debounce_ms":300,"exclude_log":N,"processed_log_seed":M}` | 模型加载完 + Observer 启动完 | 解锁"启动监控"按钮 / 显示"监控中"状态。`exclude_log` / `processed_log_seed` 是 v2.4.0 这次新增的字段，显示各自 seed 了多少个 basename（启动时历史跳过数） |
+| `{"type":"starting","folder":...,"version":"2.6.1"}` | 引擎启动、模型加载前 | 显示"加载模型中"，禁用"停止"按钮（避免模型未加载完被打断） |
+| `{"type":"ready","folder":...,"version":"2.6.1","debounce_ms":300,"exclude_log":N,"processed_log_seed":M}` | 模型加载完 + Observer 启动完 | 解锁"启动监控"按钮 / 显示"监控中"状态。`exclude_log` / `processed_log_seed` 是 v2.4.0 这次新增的字段，显示各自 seed 了多少个 basename（启动时历史跳过数） |
 | `{"type":"backfill_enqueued","count":N,"skipped_existing":K}` | **启动时**：扫到 folder 里已有 `count` 张图片待补跑，开始补跑；另有 `skipped_existing` 张被持久化日志 / 用户黑名单跳过。`count + skipped_existing = 文件夹里总图片数` | 显示"补跑历史 0/N"，进入历史回放状态 |
 | `{"type":"backfill_complete","count":N}` | **启动时**：N 张历史图片全部识别完 | UI 切到"实时监控"模式 |
 | `{"type":"error","file":...,"id":...,"msg":"..."}` | 单文件识别失败（EXIF 损坏、onnx 报错等） | 记录日志，**继续处理后续** |
@@ -471,7 +473,7 @@ python build.py --mode onedir --zip
 ## 发布流程（签名要求）
 
 1. 更新 `index.py` 的 `VERSION` 和 `CHANGELOG.md`；
-2. 打 tag（如 `v2.6.0`）并 push；
+2. 打 tag（如 `v2.6.1`）并 push；
 3. `build-windows.yml` 依次执行：onedir 构建 → 打 zip → `upload-artifact`（未签名）→
    （已启用时）SignPath 签名 `index.dist/index.exe` → 校验签名 → 重算 zip/exe 的 SHA256 → 发布 Release；
 4. 用 `Get-AuthenticodeSignature` 与 SHA256 校验后再分发（见 [docs/signing.md](docs/signing.md)）。

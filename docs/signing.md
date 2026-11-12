@@ -1,6 +1,6 @@
 # 代码签名与发布（Windows，onedir）
 
-本项目从 v2.6.0 起**默认发布 onedir 形态**：产物是 `index.dist/` 目录（`index.exe` + 依赖 DLL），
+本项目从 v2.6.1 起**默认发布 onedir 形态**：产物是 `index.dist/` 目录（`index.exe` + 依赖 DLL），
 代码签名只针对目录内的 **`index.dist/index.exe`**。
 
 签名渠道有两种用法：
@@ -8,7 +8,8 @@
 - **本地签名**（自有/付费证书，`scripts/sign_index.ps1` + signtool）；
 - **CI 签名**（SignPath Foundation 免费 OSS 证书，产物由 GitHub Actions 构建后提交签名）。
 
-> 状态：SignPath 尚未接入。本文是申请条件、接入方式与校验说明。
+> 状态：SignPath 尚未接入。申请前的测试与配置清单见
+> [docs/signpath-readiness.md](signpath-readiness.md)；本文是接入方式与校验说明。
 
 ## 1. 为什么是 SignPath Foundation
 
@@ -58,7 +59,7 @@
 
    ```xml
    <artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
-     <zip-file path="MeteorMasterDetecterAI-2.6.0-win-onedir.zip">
+     <zip-file path="MeteorMasterDetecterAI-2.6.1-win-onedir.zip">
        <pe-file path="index.dist/index.exe">
          <authenticode-sign description="MeteorMasterDetecterAI"
                             description-url="https://github.com/mordom0404/Meteor-Master-Detecter-AI"/>
@@ -117,7 +118,7 @@ python build.py --mode onedir --zip
 ## 6. 校验签名
 
 ```powershell
-Expand-Archive .\MeteorMasterDetecterAI-2.6.0-win-onedir.zip -DestinationPath .\verify -Force
+Expand-Archive .\MeteorMasterDetecterAI-2.6.1-win-onedir.zip -DestinationPath .\verify -Force
 
 # 签名状态：Status 应为 Valid
 Get-AuthenticodeSignature .\verify\index.dist\index.exe |
@@ -128,7 +129,7 @@ Get-AuthenticodeSignature .\verify\index.dist\index.exe |
   Format-List ProductName, ProductVersion, FileVersion
 
 # 与 Release 里的 SHA256 对比
-(Get-FileHash .\MeteorMasterDetecterAI-2.6.0-win-onedir.zip -Algorithm SHA256).Hash.ToLower()
+(Get-FileHash .\MeteorMasterDetecterAI-2.6.1-win-onedir.zip -Algorithm SHA256).Hash.ToLower()
 ```
 
 签名通过后，Windows 属性页会显示签名者。但注意：**签名 ≠ 立刻没有 SmartScreen 警告**，
