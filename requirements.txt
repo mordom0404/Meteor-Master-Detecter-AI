@@ -11,7 +11,7 @@
 
 numpy==2.2.0
 opencv-python==4.10.0.84
-pillow==12.0.0
+pillow==13.0.0
 watchdog>=4.0,<7.0
 
 # Windows 必须用 onnxruntime-directml（带 DirectML EP），不要装标准 onnxruntime
