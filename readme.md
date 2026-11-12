@@ -2,9 +2,9 @@
 
 [![CI](https://github.com/mordom0404/Meteor-Master-Detecter-AI/actions/workflows/ci.yml/badge.svg)](https://github.com/mordom0404/Meteor-Master-Detecter-AI/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Build Windows onefile](https://github.com/mordom0404/Meteor-Master-Detecter-AI/actions/workflows/build-windows.yml/badge.svg)](https://github.com/mordom0404/Meteor-Master-Detecter-AI/actions/workflows/build-windows.yml)
+[![Build Windows (onedir)](https://github.com/mordom0404/Meteor-Master-Detecter-AI/actions/workflows/build-windows.yml/badge.svg)](https://github.com/mordom0404/Meteor-Master-Detecter-AI/actions/workflows/build-windows.yml)
 
-内置的图像检测器（YOLOv8 → ONNX Runtime）。**当前版本：2.5.0**。
+内置的图像检测器（YOLOv8 → ONNX Runtime）。**当前版本：2.6.0**。
 
 > **开源范围**：本仓库开源引擎代码（[MIT](LICENSE)），**不开源模型权重**。
 > 引擎本身不含模型，运行时用 `--onnx_path` 指定；模型说明见 [docs/models.md](docs/models.md)。
@@ -17,25 +17,40 @@
 
 ---
 
-# 安装 / 卸载（便携版）
+# 安装 / 卸载（便携版，onedir）
 
-从 [Releases](https://github.com/mordom0404/Meteor-Master-Detecter-AI/releases) 下载 `index.exe`（单文件，无需安装、无需管理员权限）：
+发布产物是 `MeteorMasterDetecterAI-<版本>-win-onedir.zip`（onedir 目录形态），解压后得到
+`index.dist/` 文件夹（`index.exe` + 依赖 DLL）。**必须保留整个目录**，不能只拷贝 `index.exe`。
 
-1. 下载 `index.exe`，核对哈希：
+1. 下载 zip 并核对哈希（Release 里同时提供 zip 与 exe 的 `.sha256`）：
 
    ```powershell
-   Get-FileHash .\index.exe -Algorithm SHA256   # 与 Release 里的 index.exe.sha256 对比
+   Get-FileHash .\MeteorMasterDetecterAI-2.6.0-win-onedir.zip -Algorithm SHA256
+   Get-FileHash .\index.dist\index.exe -Algorithm SHA256
    ```
 
 2. 准备一个 ONNX 模型（本仓库不附带，见 [docs/models.md](docs/models.md)）。
 3. 运行，例如：
 
    ```powershell
-   .\index.exe --img_directory "D:\images" --onnx_path "D:\models\V8L_1.2.5.onnx"
+   .\index.dist\index.exe --img_directory "D:\images" --onnx_path "D:\models\V8L_1.2.5.onnx"
    ```
 
-**卸载 / 清理**：本程序不写注册表、不安装服务。删除 `index.exe`，再删除首次运行时解压出来的
-缓存目录 `%LOCALAPPDATA%\MeteorMasterDetector\`（或 `{CACHE_DIR}\MeteorMasterDetector\`）即可。
+4. 发布版校验签名：
+
+   ```powershell
+   Get-AuthenticodeSignature .\index.dist\index.exe | Format-List Status,SignerCertificate
+   ```
+
+**集成进 MeteorMaster（宿主程序）**：把 `index.dist/` 整体放进宿主程序资源目录，
+spawn `index.dist\index.exe`；引擎版本可用 `index.exe --version` 查询，接口协议见
+[stdout 协议](#stdout-协议)，详细集成说明见 [docs/integration.md](docs/integration.md)。
+
+**卸载 / 清理**：本程序不写注册表、不安装服务。删除 `index.dist/` 目录即可。
+onedir 模式没有 onefile 解压缓存；如果之前用过 onefile 版本，可顺带删除
+`%LOCALAPPDATA%\MeteorMasterDetector\`。
+
+> 需要单文件（onefile）形态时，见 [打包成单文件 (win, onefile)](#打包成单文件-win-onefile)。
 
 ---
 
@@ -43,8 +58,9 @@
 
 - [安装 / 卸载（便携版）](#安装--卸载便携版)
 - [打包](#打包)
+  - [打包成目录 (win, onedir 推荐)](#打包成目录-win-onedir-推荐)
+  - [打包成单文件 (win, onefile)](#打包成单文件-win-onefile)
   - [打包 (mac)](#打包-mac)
-  - [打包成单文件 (win)](#打包成单文件-win)
 - [打包后的测试](#打包后的测试)
 - [使用](#使用)
   - [示例](#示例)
@@ -100,25 +116,58 @@ nuitka --standalone --lto=no --show-progress --output-dir=dist index.py
 打包完成后记得删除 `libtk8.6.dylib` 文件（pillow 引入的），会导致审核不过。
 （当前依赖版本下若未生成该文件，则无需处理。）
 
-## 打包成单文件 (win)
+## 打包成目录 (win, onedir，推荐)
 
-打包时记得把系统 Path 变量里面的微信开发者工具删掉否则中文路径会报错。**推荐 MSVC**（VS 2022 BuildTools 自带的 cl.exe），仓库中的 `build.py` 已固定走 MSVC（不要加 `--mingw64`）。
+发布、签名、集成进 MeteorMaster 都用这个形态。在装有依赖的打包环境里：
 
 ```bash
-nuitka --standalone --onefile --onefile-tempdir-spec="{CACHE_DIR}/MeteorMasterDetector/2.5.0-build1" --lto=no --show-progress --output-dir=dist index.py
+python build.py --mode onedir --zip
 ```
 
-`--standalone` 是后加的，以前不加好像也没有人反馈无法运行。
+产物：
 
-> ★ **Windows 商店版（APPX / MSIX）必须先打引导层补丁**：`build.py` 会在调用 Nuitka 之前自动执行
-> `nuitka-patches/patch_onefile_bootstrap.py`。不打这个补丁，打包出来的 onefile 在商店版里
+- `dist/index.dist/`：`index.exe` + 依赖 DLL，**整目录分发**（不能只拷 exe）；
+- `dist/index.dist/index.exe.sha256`、`dist/MeteorMasterDetecterAI-<版本>-win-onedir.zip`（即带 `.sha256`）。
+
+要点：
+
+- `index.exe` 带 Windows 版本资源（ProductName / ProductVersion / FileVersion），
+  这是代码签名（SignPath / signtool）的前置条件；版本号来自 `index.py` 的 `VERSION`；
+- onedir 不经过 onefile 引导层，**不需要** `nuitka-patches` 的 MSIX/APPX 补丁，`build.py` 会自动跳过；
+- 签名只签 `dist/index.dist/index.exe`（依赖 DLL 是上游 OSS 二进制，不要重签），
+  签名会改变哈希，用 `scripts/sign_index.ps1` 重新生成 SHA256。详见 [docs/signing.md](docs/signing.md)。
+
+手写等价命令（仅参考，完整参数见 `build.py`）：
+
+```bash
+nuitka --standalone --lto=no --show-progress --output-dir=dist \
+  --windows-product-name=MeteorMasterDetecterAI --windows-product-version=2.6.0.0 --windows-file-version=2.6.0.0 \
+  index.py
+```
+
+## 打包成单文件 (win, onefile)
+
+旧的分发形态（单文件，首次运行解压到缓存），仍保留支持：
+
+```bash
+python build.py --mode onefile
+```
+
+`build.py` 在 onefile 模式使用固定的用户缓存路径 `{CACHE_DIR}/MeteorMasterDetector/2.6.0-build1`。
+发布新构建（包括依赖变化）时 bump `MMAD_BUILD_TAG` 或 `index.py` 的 `VERSION`，避免不同构建共用缓存；
+旧缓存不会自动清理，可手动删除。
+
+> ★ **Windows 商店版（APPX / MSIX）必须先打引导层补丁**：onefile 模式下 `build.py` 会在调用 Nuitka
+> 之前自动执行 `nuitka-patches/patch_onefile_bootstrap.py`。不打这个补丁，打包出来的 onefile 在商店版里
 > 内部子进程会以 `0xC0000135`（STATUS_DLL_NOT_FOUND）秒退。详见 `nuitka-patches/README.md`。
+> onedir 模式没有这个问题，也不需要补丁。
 
-`build.py` 和上面的命令均使用固定的用户缓存路径 `{CACHE_DIR}/MeteorMasterDetector/2.5.0-build1`。`{CACHE_DIR}` 由 Nuitka 在运行时解析；首次启动会解压，后续启动复用缓存，不再每次创建新的 `Temp/onefile_<PID>_<TIME>` 目录。缓存会在退出后保留，因此仍会占用解压后的磁盘空间。
+打包时记得把系统 Path 变量里面的微信开发者工具删掉否则中文路径会报错。**推荐 MSVC**（VS 2022 BuildTools
+自带的 cl.exe），仓库中的 `build.py` 已固定走 MSVC（不要加 `--mingw64`）。
 
-发布新构建（包括依赖变化）时，请同步更新 `build.py` 和上述命令中的 `2.5.0-build1`，例如改成 `2.5.0-build2`，避免不同构建共用缓存。此设置需要重新打包才会生效；旧的 `onefile_*` 临时目录和旧版本缓存不会自动清理，可在确认相关程序全部退出后手动删除。缓存被删除后，下次启动会重新解压。
-
-实际打包脚本里还会带上一堆 `--nofollow-import-to=` 排除 torch / ultralytics / scipy / matplotlib 等 `requirements.txt` 里"挂名"的包、 `--noinclude-data-files=` 排除 PIL 的字体文件、 `--include-data-files=` 把 `cv2/config*.py` 显式带进 bundle——这些一次性写在打包脚本里就行，readme 不展开。完整命令见 git history（最后一次成功的 build 命令）。
+实际打包脚本里还会带上一堆 `--nofollow-import-to=` 排除 torch / ultralytics / scipy / matplotlib 等
+`requirements.txt` 里"挂名"的包、 `--noinclude-data-files=` 排除 PIL 的字体文件、 `--include-data-files=`
+把 `cv2/config*.py` 与 `THIRD_PARTY_NOTICES.md` 显式带进产物——这些一次性写在打包脚本里就行，readme 不展开。
 
 > ⚠️ 监听模式需要 `watchdog` 模块。如果在没装 watchdog 的环境里打包，会因为 `import watchdog` 失败直接报 ImportError。打包前请确认 `requirements.txt` 已安装（或在打包脚本里加 `--include-module=watchdog` / `--include-package=watchdog`，具体看 nuitka 版本）。
 
@@ -131,13 +180,13 @@ nuitka --standalone --onefile --onefile-tempdir-spec="{CACHE_DIR}/MeteorMasterDe
 ### 用 GitHub Actions 构建（发布 / 签名走这条路径）
 
 仓库自带 [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml)：
-在 GitHub 的 Windows runner 上从源码安装依赖 → 打 Nuitka 补丁 → 构建 `dist/index.exe`
-→ 上传产物并生成 SHA256；打 `v*` tag 时还会自动创建 GitHub Release。
+在 GitHub 的 Windows runner 上从源码安装依赖 → 构建 `dist/index.dist/` → 打 zip 并生成 SHA256
+→（启用后）对 `index.dist/index.exe` 做 SignPath 签名 → 打 `v*` tag 时自动创建 Release。
 
 本地等价命令：
 
 ```bash
-python build.py
+python build.py --mode onedir --zip
 ```
 
 > 申请免费代码签名证书时，"产物必须由公共 CI 从公开源码构建"是硬性条件，
@@ -211,7 +260,7 @@ python build.py
 
 启动后：
 
-1. stdout 立刻输出 `{"type":"starting",...,"version":"2.5.0"}`（模型还没好）
+1. stdout 立刻输出 `{"type":"starting",...,"version":"2.6.0"}`（模型还没好）
 2. 模型加载完输出 `{"type":"ready",...,"debounce_ms":300}`（可以开始处理了）
 3. 往 `D:/images` 里复制 / 新建任何 jpg，约 300ms debounce 后 stdout 输出一行识别结果 JSON
 4. 进程长驻直到 SIGTERM / SIGKILL
@@ -364,8 +413,8 @@ private_screenshot.jpg
 
 | 消息 | 触发时机 | MMA 端建议处理 |
 |------|---------|---------------|
-| `{"type":"starting","folder":...,"version":"2.5.0"}` | 引擎启动、模型加载前 | 显示"加载模型中"，禁用"停止"按钮（避免模型未加载完被打断） |
-| `{"type":"ready","folder":...,"version":"2.5.0","debounce_ms":300,"exclude_log":N,"processed_log_seed":M}` | 模型加载完 + Observer 启动完 | 解锁"启动监控"按钮 / 显示"监控中"状态。`exclude_log` / `processed_log_seed` 是 v2.4.0 这次新增的字段，显示各自 seed 了多少个 basename（启动时历史跳过数） |
+| `{"type":"starting","folder":...,"version":"2.6.0"}` | 引擎启动、模型加载前 | 显示"加载模型中"，禁用"停止"按钮（避免模型未加载完被打断） |
+| `{"type":"ready","folder":...,"version":"2.6.0","debounce_ms":300,"exclude_log":N,"processed_log_seed":M}` | 模型加载完 + Observer 启动完 | 解锁"启动监控"按钮 / 显示"监控中"状态。`exclude_log` / `processed_log_seed` 是 v2.4.0 这次新增的字段，显示各自 seed 了多少个 basename（启动时历史跳过数） |
 | `{"type":"backfill_enqueued","count":N,"skipped_existing":K}` | **启动时**：扫到 folder 里已有 `count` 张图片待补跑，开始补跑；另有 `skipped_existing` 张被持久化日志 / 用户黑名单跳过。`count + skipped_existing = 文件夹里总图片数` | 显示"补跑历史 0/N"，进入历史回放状态 |
 | `{"type":"backfill_complete","count":N}` | **启动时**：N 张历史图片全部识别完 | UI 切到"实时监控"模式 |
 | `{"type":"error","file":...,"id":...,"msg":"..."}` | 单文件识别失败（EXIF 损坏、onnx 报错等） | 记录日志，**继续处理后续** |
@@ -408,26 +457,26 @@ watchdog 缺失时的错误（在 `runWatchFolder` 启动时检测）：
 ```bash
 pip install -r requirements.txt
 pip install nuitka==2.7.13
-python build.py
+python build.py --mode onedir --zip
 ```
 
-产物为 `dist/index.exe`，构建报告（commit / 依赖版本 / SHA256）写到 `build_report.txt`。
+产物为 `dist/index.dist/`（onedir），构建报告（commit / 依赖版本 / 产物哈希）写到 `build_report.txt`。
 
 ## GitHub Actions
 
 - [`ci.yml`](.github/workflows/ci.yml)：push / PR 时做语法检查和 CLI 冒烟测试（不需要模型）；
 - [`build-windows.yml`](.github/workflows/build-windows.yml)：在 Windows runner 上从源码构建
-  `index.exe`，上传产物 + SHA256；打 `v*` tag 时自动创建 Release。
+  onedir 目录 + zip，上传产物与 SHA256；打 `v*` tag 时自动创建 Release。
 
 ## 发布流程（签名要求）
 
 1. 更新 `index.py` 的 `VERSION` 和 `CHANGELOG.md`；
-2. 打 tag（如 `v2.5.0`）并 push；
-3. `build-windows.yml` 依次执行：构建 → `upload-artifact`（未签名）→（已启用时）SignPath 签名 →
-   重新计算 SHA256 → 发布 Release；
+2. 打 tag（如 `v2.6.0`）并 push；
+3. `build-windows.yml` 依次执行：onedir 构建 → 打 zip → `upload-artifact`（未签名）→
+   （已启用时）SignPath 签名 `index.dist/index.exe` → 校验签名 → 重算 zip/exe 的 SHA256 → 发布 Release；
 4. 用 `Get-AuthenticodeSignature` 与 SHA256 校验后再分发（见 [docs/signing.md](docs/signing.md)）。
 
-> 在 SignPath 申请通过之前，Release 里的 exe 是**未签名**的——这正好满足
+> 在 SignPath 申请通过之前，Release 里的产物是**未签名**的——这正好满足
 > SignPath「必须先发布过要签名的形态」的前置条件。
 
 ---

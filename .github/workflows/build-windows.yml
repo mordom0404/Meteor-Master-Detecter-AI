@@ -1,12 +1,14 @@
-name: Build Windows onefile
+name: Build Windows (onedir)
 
+# 从 v2.6.0 起发布形态是 onedir：dist/index.dist/（index.exe + 依赖 DLL），
+# 打包成 MeteorMasterDetecterAI-<版本>-win-onedir.zip。
+#
 # 用途：
-#   1) 手动触发（workflow_dispatch）或 push v* tag 时，在 GitHub 的 Windows
-#      环境里从源码重新构建 index.exe —— 这是申请免费代码签名证书时，
-#      "产物必须由公共 CI 从公开源码构建"的硬性要求。
-#   2) tag 构建会自动创建 GitHub Release，附 exe + SHA256 + 第三方许可清单。
-#   3) SignPath Foundation 审核通过后，设置仓库 Variable SIGNPATH_ENABLED=true
-#      即可启用签名步骤；详见 docs/signing.md。
+#   1) 手动触发（workflow_dispatch）或 push v* tag 时，在 GitHub 托管 Windows runner 上
+#      从源码构建 onedir 产物 —— 这是免费代码签名证书（SignPath）的硬性要求。
+#   2) tag 构建自动创建 GitHub Release（zip + sha256 + 第三方许可清单）。
+#   3) SignPath 审核通过后，设置仓库 Variable SIGNPATH_ENABLED=true 即可启用签名步骤；
+#      签名对象是 zip 内的 index.dist/index.exe，详见 docs/signing.md。
 
 on:
   workflow_dispatch:
@@ -20,7 +22,7 @@ permissions:
 
 jobs:
   build:
-    name: Nuitka build
+    name: Nuitka onedir build
     runs-on: windows-2022
     timeout-minutes: 90
     steps:
@@ -42,7 +44,7 @@ jobs:
           pip install nuitka==2.7.13
           pip install pip-licenses
 
-      - name: 校验 Nuitka 版本与补丁兼容
+      - name: 校验 Nuitka 版本
         run: python -c "import nuitka; print(nuitka.__version__)"
 
       - name: 生成第三方许可清单（随 Release 分发）
@@ -50,21 +52,31 @@ jobs:
           New-Item -ItemType Directory -Force -Path build | Out-Null
           pip-licenses --format=plain-vertical --with-license-file --with-urls --output-file=build/THIRD_PARTY_LICENSES.txt
 
-      - name: Nuitka 打包（含 MSIX/APPX 引导层补丁）
-        run: python build.py
+      - name: Nuitka 打包（onedir + zip）
+        run: python build.py --mode onedir --zip
 
-      - name: 上传未签名产物（SignPath 签名前必须已有 artifact）
+      - name: 列出产物与哈希
+        shell: pwsh
+        run: |
+          Get-ChildItem dist -Filter "*.zip*" | Select-Object Name, Length
+          Get-ChildItem dist\index.dist -Filter "index.exe*" | Select-Object Name, Length
+          Get-Content dist\*.sha256 -ErrorAction SilentlyContinue
+          (Get-Item dist\index.dist\index.exe).VersionInfo |
+            Format-List ProductName, ProductVersion, FileVersion
+
+      - name: 上传未签名 zip（SignPath 签名前必须已有 artifact）
         id: upload-unsigned
         uses: actions/upload-artifact@v4
         with:
-          name: unsigned-index-exe
-          path: dist/index.exe
+          name: unsigned-onedir-zip
+          path: dist/*-win-onedir.zip
           if-no-files-found: error
           retention-days: 7
 
       # ---------------------------------------------------------------------
       # SignPath 签名（需要申请通过 + 配置 Variables/Secrets 后才生效，
       # 详见 docs/signing.md）。未启用时整步跳过，产物保持未签名。
+      # Artifact Configuration 需要以 zip-file 包住 pe-file index.dist/index.exe。
       # ---------------------------------------------------------------------
       - name: SignPath 签名
         id: signpath
@@ -78,34 +90,45 @@ jobs:
           github-artifact-id: ${{ steps.upload-unsigned.outputs.artifact-id }}
           wait-for-completion: true
           output-artifact-directory: dist/signed
-          comment: "MeteorMasterDetecterAI ${{ github.ref_name }}"
+          comment: "MeteorMasterDetecterAI ${{ github.ref_name }} (onedir)"
 
-      - name: 使用签名后的产物
+      - name: 校验签名产物并重算哈希
         if: ${{ vars.SIGNPATH_ENABLED == 'true' }}
         shell: pwsh
         run: |
-          if (-not (Test-Path "dist/signed/index.exe")) {
-            throw "签名完成但没找到 dist/signed/index.exe，请检查 SignPath artifact configuration"
-          }
-          Copy-Item "dist/signed/index.exe" "dist/index.exe" -Force
-          $sig = Get-AuthenticodeSignature "dist/index.exe"
+          $signedZip = Get-ChildItem dist\signed -Recurse -Filter "*-win-onedir.zip" |
+            Select-Object -First 1
+          if (-not $signedZip) { throw "签名完成但没找到签名后的 zip，请检查 SignPath artifact configuration" }
+
+          # 解压校验 index.dist/index.exe 的签名
+          $verify = Join-Path $env:RUNNER_TEMP "signed-verify"
+          Remove-Item $verify -Recurse -Force -ErrorAction SilentlyContinue
+          Expand-Archive -LiteralPath $signedZip.FullName -DestinationPath $verify -Force
+          $exe = Join-Path $verify "index.dist\index.exe"
+          if (-not (Test-Path $exe)) { throw "签名 zip 内没有 index.dist\index.exe" }
+          $sig = Get-AuthenticodeSignature -LiteralPath $exe
           if ($sig.Status -ne "Valid") { throw "签名校验失败: $($sig.StatusMessage)" }
           Write-Host "签名有效: $($sig.SignerCertificate.Subject)"
 
-      - name: 生成 SHA256（必须在签名之后）
-        shell: pwsh
-        run: |
-          $hash = (Get-FileHash dist/index.exe -Algorithm SHA256).Hash.ToLower()
-          "$hash  index.exe" | Set-Content dist/index.exe.sha256 -Encoding ascii
-          Get-Content dist/index.exe.sha256
+          # 替换 dist 里的产物，并重算 exe / zip 哈希（签名会改变哈希）
+          $zipPath = "dist\$($signedZip.Name)"
+          Copy-Item $signedZip.FullName $zipPath -Force
+          $exeHash = (Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash.ToLower()
+          "$exeHash  index.exe" | Set-Content "dist\index.dist\index.exe.sha256" -Encoding ascii
+          $zipHash = (Get-FileHash -LiteralPath $zipPath -Algorithm SHA256).Hash.ToLower()
+          "$exeHash  index.exe`n$zipHash  $($signedZip.Name)" |
+            Set-Content "$zipPath.sha256" -Encoding ascii
+          Write-Host "zip SHA256 : $zipHash"
+          Write-Host "exe SHA256 : $exeHash"
 
-      - name: 上传产物
+      - name: 上传最终产物
         uses: actions/upload-artifact@v4
         with:
-          name: MeteorMasterDetecterAI-windows-${{ github.ref_name }}
+          name: MeteorMasterDetecterAI-windows-onedir-${{ github.ref_name }}
           path: |
-            dist/index.exe
-            dist/index.exe.sha256
+            dist/*-win-onedir.zip
+            dist/*-win-onedir.zip.sha256
+            dist/index.dist/index.exe.sha256
             build/THIRD_PARTY_LICENSES.txt
           if-no-files-found: error
           retention-days: 30
@@ -115,16 +138,20 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/index.exe
-            dist/index.exe.sha256
+            dist/*-win-onedir.zip
+            dist/*-win-onedir.zip.sha256
+            dist/index.dist/index.exe.sha256
             build/THIRD_PARTY_LICENSES.txt
           generate_release_notes: true
           body: |
-            ## 安装 / 校验
+            ## 安装 / 校验（onedir）
 
-            - 下载 `index.exe`（无需安装），校验 `index.exe.sha256`：
-              `Get-FileHash .\index.exe -Algorithm SHA256`
-            - 第三方组件许可见 `THIRD_PARTY_LICENSES.txt` 与仓库 [THIRD_PARTY_NOTICES.md](https://github.com/mordom0404/Meteor-Master-Detecter-AI/blob/master/THIRD_PARTY_NOTICES.md)
+            - 下载 `MeteorMasterDetecterAI-*-win-onedir.zip` 并**解压整个目录**；
+              入口是 `index.dist/index.exe`，不要只拷贝 exe。
+            - 校验哈希：`Get-FileHash .\*-win-onedir.zip -Algorithm SHA256`（对比 `.sha256`）
+            - 校验签名：`Get-AuthenticodeSignature .\index.dist\index.exe`
+            - 第三方组件许可见 `THIRD_PARTY_LICENSES.txt` 与仓库
+              [THIRD_PARTY_NOTICES.md](https://github.com/mordom0404/Meteor-Master-Detecter-AI/blob/master/THIRD_PARTY_NOTICES.md)
             - 本 Release **不包含模型权重**：模型由用户通过 `--onnx_path` 指定，
               说明见 [docs/models.md](https://github.com/mordom0404/Meteor-Master-Detecter-AI/blob/master/docs/models.md)
             - 代码签名策略见 [Code signing policy](https://github.com/mordom0404/Meteor-Master-Detecter-AI#code-signing-policy)

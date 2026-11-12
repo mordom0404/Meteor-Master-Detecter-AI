@@ -54,7 +54,7 @@ class CliSmokeTest(unittest.TestCase):
     def test_version_flag(self):
         result = run_engine("--version")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("2.5.0", result.stdout)
+        self.assertIn("2.6.0", result.stdout)
 
     def test_licenses_flag_does_not_require_model(self):
         result = run_engine("--licenses")

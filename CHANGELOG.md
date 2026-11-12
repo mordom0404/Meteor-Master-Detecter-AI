@@ -3,7 +3,32 @@
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
-## [Unreleased]
+## [2.6.0] - 2026-11-12
+
+### 新增
+- **默认打包形态改为 onedir**：`build.py --mode onedir` 产出 `dist/index.dist/`（`index.exe` + 依赖 DLL），
+  可直接集成进 MeteorMaster；`--zip` 额外产出 `MeteorMasterDetecterAI-<版本>-win-onedir.zip`，
+  并自动生成 `index.exe.sha256` / zip 的 `.sha256`。
+- `build.py --mode onefile` 保留旧单文件形态（默认不再是 onefile）。
+- 新增 `scripts/sign_index.ps1`：用 signtool 对 `index.dist/index.exe` 签名、校验签名、重算 SHA256，
+  可选重新打 zip（签名后哈希会变化）。
+- 新增 `docs/integration.md`：onedir 目录如何集成进 MeteorMaster（布局、版本检查、协议、升级）。
+- 开源准备：`LICENSE`（MIT）、`CONTRIBUTING.md`、`SECURITY.md`、`CODE_OF_CONDUCT.md`、
+  `THIRD_PARTY_NOTICES.md`、`docs/models.md`、`docs/signing.md`。
+- CLI 新增 `--version`（打印版本后退出）与 `--licenses`（打印第三方组件许可，离线可用）。
+- GitHub Actions：`ci.yml`（语法检查 + CLI 冒烟测试）、`build-windows.yml`
+  （从源码构建 onedir、打 zip、上传产物、生成 SHA256、tag 自动发 Release）。
+- 打包产物写入 Windows 版本资源（product name / version），并把
+  `THIRD_PARTY_NOTICES.md` 打进产物；`build.py` 额外输出 `build/nuitka-report.xml`。
+
+### 变更
+- `build.py`：onefile 模式才应用 `nuitka-patches` 的 MSIX/APPX 引导层补丁；onedir 自动跳过。
+- `build.py` 的构建报告增加「打包形态」、目录总大小、zip 哈希。
+- `requirements.txt` 精简为引擎真正的运行时依赖；新增 `requirements-lock.txt`
+  （打包环境完整快照）。Windows 明确使用 `onnxruntime-directml`。
+- `build.py` 不再写死本机 Python 路径（默认当前解释器，可用 `MMAD_BUILD_PYTHON` 覆盖），
+  版本号与 `BUILD_TAG` 从 `index.py` 推导。
+- 文档中的本机绝对路径改为通用示例路径。
 
 ### 安全 / 合规
 - **重写 `index.py` 中与 Ultralytics 官方 ONNXRuntime 示例高度同构的部分**，确保 MIT 授权成立：
@@ -13,24 +38,8 @@
   逐行一致。
 - `THIRD_PARTY_NOTICES.md` 增加「代码来源说明」，并为 Nuitka 补丁中的上游锚点片段补充署名。
 
-### 新增
-- 开源准备：`LICENSE`（MIT）、`CONTRIBUTING.md`、`SECURITY.md`、`CODE_OF_CONDUCT.md`、
-  `THIRD_PARTY_NOTICES.md`、`docs/models.md`、`docs/signing.md`。
-- CLI 新增 `--version`（打印版本后退出）与 `--licenses`（打印第三方组件许可，离线可用）。
-- GitHub Actions：`ci.yml`（语法检查 + CLI 冒烟测试）、`build-windows.yml`
-  （从源码构建 onefile、上传产物、生成 SHA256、tag 自动发 Release）。
-- 打包产物写入 Windows 版本资源（product name / version），并把
-  `THIRD_PARTY_NOTICES.md` 打进 exe；`build.py` 额外输出 `build/nuitka-report.xml`。
-
-### 变更
-- `requirements.txt` 精简为引擎真正的运行时依赖；新增 `requirements-lock.txt`
-  （打包环境完整快照）。Windows 明确使用 `onnxruntime-directml`。
-- `build.py` 不再写死本机 Python 路径（默认当前解释器，可用 `MMAD_BUILD_PYTHON` 覆盖），
-  版本号与 `BUILD_TAG` 从 `index.py` 推导（可用 `MMAD_BUILD_TAG` 覆盖）。
-- 文档中的本机绝对路径改为通用示例路径。
-
 ### 移除
-- 不再跟踪 `nuitka-crash-report.xml`、`report.xml` 等构建报告（历史清理另见本节说明）。
+- 不再跟踪 `nuitka-crash-report.xml`、`report.xml` 等构建报告。
 
 ## [2.5.0] - 2026-10
 
