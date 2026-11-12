@@ -9,9 +9,9 @@
 |---|---|---|
 | 仓库 Public | ✅ 已切 Public | — |
 | License 识别 | ✅ GitHub 识别为 MIT（API `license.spdx_id = MIT`） | 已移除 LICENSE 末尾附注（曾导致显示 NOASSERTION） |
-| CI（单测/语法） | ✅ 全绿（push run #14/#15 success） | 保持 |
-| Build Windows (onedir) | ⚠️ **首次手动触发已发起，等结果**（此前 0 次运行） | 跑通一次，确认产物结构与哈希 |
-| GitHub Release | ❌ 还没有 tag / Release | 打 `v2.6.1` tag，产出未签名 Release |
+| CI（单测/语法） | ✅ 全绿（push run #17–#19 success） | 保持 |
+| Build Windows (onedir) | ✅ 手动 run #3 与 tag run #4 均 success；预签名自检通过 | 保持 |
+| GitHub Release | ✅ 已发布 **v2.6.1（未签名）**：zip + zip.sha256 + index.exe.sha256 + THIRD_PARTY_LICENSES.txt | 等 SignPath 通过后升级为签名 Release |
 | 仓库 2FA | ⚠️ 需你确认 | GitHub Settings → Password and authentication |
 | Code signing policy | ✅ README 已含指定原句/角色/隐私/卸载 | 发布页（Release 说明）也链接到它 |
 | exe 版本资源 | ✅ ProductName / ProductVersion / FileVersion = 2.6.1.0 | 每次发版跑 `verify_release.ps1` |
@@ -20,6 +20,18 @@
 | 仓库描述 / Topics | ❌ 为空 | Settings 里补 description 与 topics（`yolo/onnxruntime/object-detection/meteor`） |
 | 依赖 PR | ⚠️ 9 个 Dependabot open PR（含 actions 大版本、watchdog 4→7） | 申请前先关闭/暂缓；`upload-artifact v7`、`checkout v7` 未经构建流程验证 |
 | 商业分发 | ⚠️ 待确认 | 若商业使用，不要走 SignPath/Certum 免费档 |
+
+### 实测记录（2026-11-12）
+
+- **CI**：push run #17/#18/#19 全部 success。
+- **Build Windows (onedir)**：手动 run #3（commit `8cfacb1`）success；tag `v2.6.1` run #4 success。
+  首次触发暴露并修复了两个 CI 问题：`nuitka` 包没有 `__version__`、Windows runner 的
+  cp1252 stdout 编码导致中文日志报 `UnicodeEncodeError`（`build.py` 已统一 UTF-8）。
+- **Release**：<https://github.com/mordom0404/Meteor-Master-Detecter-AI/releases/tag/v2.6.1>
+  已发布（非 draft），资产：`MeteorMasterDetecterAI-2.6.1-win-onedir.zip`、
+  `*.zip.sha256`、`index.exe.sha256`、`THIRD_PARTY_LICENSES.txt`。
+- **License**：GitHub API 已识别 `MIT`（此前 `LICENSE` 末尾附注导致 NOASSERTION，已移除）。
+- **本地**：`python -m unittest`（6/6）与 `scripts/verify_release.ps1`（15/15）通过。
 
 ## 1. 申请前必须完成的仓库配置
 
