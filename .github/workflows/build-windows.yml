@@ -45,7 +45,7 @@ jobs:
           pip install pip-licenses
 
       - name: 校验 Nuitka 版本
-        run: python -c "import nuitka; print(nuitka.__version__)"
+        run: python -m nuitka --version
 
       - name: 生成第三方许可清单（随 Release 分发）
         run: |
