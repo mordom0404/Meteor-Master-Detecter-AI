@@ -39,6 +39,14 @@ import shutil
 import subprocess
 import sys
 
+# Windows 上 Python 的 stdout 默认用系统 ANSI 代码页（CI 的 windows-latest 是 cp1252，
+# 中文日志会 UnicodeEncodeError）。构建日志里有中文，这里统一按 UTF-8 输出。
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except (AttributeError, ValueError):
+    pass
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 PATCH_SCRIPT = os.path.join(HERE, "nuitka-patches", "patch_onefile_bootstrap.py")
 INDEX_PY = os.path.join(HERE, "index.py")

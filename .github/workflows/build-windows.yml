@@ -53,6 +53,8 @@ jobs:
           pip-licenses --format=plain-vertical --with-license-file --with-urls --output-file=build/THIRD_PARTY_LICENSES.txt
 
       - name: Nuitka 打包（onedir + zip）
+        env:
+          PYTHONIOENCODING: utf-8
         run: python build.py --mode onedir --zip
 
       - name: 列出产物与哈希
