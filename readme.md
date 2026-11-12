@@ -496,6 +496,7 @@ Free code signing provided by [SignPath.io](https://about.signpath.io), certific
   specifically requested by the user or the person installing or operating it.
   It does not ship any model weights; the ONNX model file is supplied by the user
   (see [docs/models.md](docs/models.md)) and is not part of this project or its signed artifacts.
+  See also [docs/privacy.md](docs/privacy.md).
 - **Uninstall**: delete `index.exe` and the cache directory `%LOCALAPPDATA%\MeteorMasterDetector\`
   (see [安装 / 卸载（便携版）](#安装--卸载便携版)).
 

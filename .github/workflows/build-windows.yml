@@ -161,3 +161,6 @@ jobs:
             - 本 Release **不包含模型权重**：模型由用户通过 `--onnx_path` 指定，
               说明见 [docs/models.md](https://github.com/mordom0404/Meteor-Master-Detecter-AI/blob/master/docs/models.md)
             - 代码签名策略见 [Code signing policy](https://github.com/mordom0404/Meteor-Master-Detecter-AI#code-signing-policy)
+            - 隐私说明见 [docs/privacy.md](https://github.com/mordom0404/Meteor-Master-Detecter-AI/blob/master/docs/privacy.md)
+
+            **Code signing**: Free code signing provided by [SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org).
