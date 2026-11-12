@@ -1,0 +1,35 @@
+# 统一换行符：文本文件入库一律 LF，Windows 脚本保持 CRLF。
+# 避免 Windows / macOS 协作时出现整文件 diff。
+* text=auto eol=lf
+
+*.py    text eol=lf
+*.md    text eol=lf
+*.txt   text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+*.json  text eol=lf
+*.toml  text eol=lf
+*.cfg   text eol=lf
+*.ini   text eol=lf
+
+# Windows 脚本保留 CRLF（cmd.exe 对 LF 的批处理容错很差）
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+*.ps1   text eol=crlf
+
+# 二进制文件：禁止换行符转换，也不做文本 diff
+*.exe   binary
+*.dll   binary
+*.pyd   binary
+*.lib   binary
+*.onnx  binary
+*.pt    binary
+*.pth   binary
+*.engine binary
+*.zip   binary
+*.7z    binary
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.bmp   binary
+*.gif   binary

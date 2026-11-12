@@ -1,0 +1,130 @@
+name: Build Windows onefile
+
+# 用途：
+#   1) 手动触发（workflow_dispatch）或 push v* tag 时，在 GitHub 的 Windows
+#      环境里从源码重新构建 index.exe —— 这是申请免费代码签名证书时，
+#      "产物必须由公共 CI 从公开源码构建"的硬性要求。
+#   2) tag 构建会自动创建 GitHub Release，附 exe + SHA256 + 第三方许可清单。
+#   3) SignPath Foundation 审核通过后，设置仓库 Variable SIGNPATH_ENABLED=true
+#      即可启用签名步骤；详见 docs/signing.md。
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  build:
+    name: Nuitka build
+    runs-on: windows-2022
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: 初始化 MSVC 编译环境
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install nuitka==2.7.13
+          pip install pip-licenses
+
+      - name: 校验 Nuitka 版本与补丁兼容
+        run: python -c "import nuitka; print(nuitka.__version__)"
+
+      - name: 生成第三方许可清单（随 Release 分发）
+        run: |
+          New-Item -ItemType Directory -Force -Path build | Out-Null
+          pip-licenses --format=plain-vertical --with-license-file --with-urls --output-file=build/THIRD_PARTY_LICENSES.txt
+
+      - name: Nuitka 打包（含 MSIX/APPX 引导层补丁）
+        run: python build.py
+
+      - name: 上传未签名产物（SignPath 签名前必须已有 artifact）
+        id: upload-unsigned
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-index-exe
+          path: dist/index.exe
+          if-no-files-found: error
+          retention-days: 7
+
+      # ---------------------------------------------------------------------
+      # SignPath 签名（需要申请通过 + 配置 Variables/Secrets 后才生效，
+      # 详见 docs/signing.md）。未启用时整步跳过，产物保持未签名。
+      # ---------------------------------------------------------------------
+      - name: SignPath 签名
+        id: signpath
+        if: ${{ vars.SIGNPATH_ENABLED == 'true' }}
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ secrets.SIGNPATH_ORG_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          github-artifact-id: ${{ steps.upload-unsigned.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: dist/signed
+          comment: "MeteorMasterDetecterAI ${{ github.ref_name }}"
+
+      - name: 使用签名后的产物
+        if: ${{ vars.SIGNPATH_ENABLED == 'true' }}
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "dist/signed/index.exe")) {
+            throw "签名完成但没找到 dist/signed/index.exe，请检查 SignPath artifact configuration"
+          }
+          Copy-Item "dist/signed/index.exe" "dist/index.exe" -Force
+          $sig = Get-AuthenticodeSignature "dist/index.exe"
+          if ($sig.Status -ne "Valid") { throw "签名校验失败: $($sig.StatusMessage)" }
+          Write-Host "签名有效: $($sig.SignerCertificate.Subject)"
+
+      - name: 生成 SHA256（必须在签名之后）
+        shell: pwsh
+        run: |
+          $hash = (Get-FileHash dist/index.exe -Algorithm SHA256).Hash.ToLower()
+          "$hash  index.exe" | Set-Content dist/index.exe.sha256 -Encoding ascii
+          Get-Content dist/index.exe.sha256
+
+      - name: 上传产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: MeteorMasterDetecterAI-windows-${{ github.ref_name }}
+          path: |
+            dist/index.exe
+            dist/index.exe.sha256
+            build/THIRD_PARTY_LICENSES.txt
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: 发布 Release（仅 tag 触发）
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/index.exe
+            dist/index.exe.sha256
+            build/THIRD_PARTY_LICENSES.txt
+          generate_release_notes: true
+          body: |
+            ## 安装 / 校验
+
+            - 下载 `index.exe`（无需安装），校验 `index.exe.sha256`：
+              `Get-FileHash .\index.exe -Algorithm SHA256`
+            - 第三方组件许可见 `THIRD_PARTY_LICENSES.txt` 与仓库 [THIRD_PARTY_NOTICES.md](https://github.com/mordom0404/Meteor-Master-Detecter-AI/blob/master/THIRD_PARTY_NOTICES.md)
+            - 本 Release **不包含模型权重**：模型由用户通过 `--onnx_path` 指定，
+              说明见 [docs/models.md](https://github.com/mordom0404/Meteor-Master-Detecter-AI/blob/master/docs/models.md)
+            - 代码签名策略见 [Code signing policy](https://github.com/mordom0404/Meteor-Master-Detecter-AI#code-signing-policy)

@@ -1,0 +1,77 @@
+name: Bug 报告
+description: 报告引擎的识别错误、崩溃或打包问题
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈！提交前请确认：
+        - 已经看过 [readme.md](https://github.com/mordom0404/Meteor-Master-Detecter-AI#readme) 和 [docs/models.md](https://github.com/mordom0404/Meteor-Master-Detecter-AI/blob/master/docs/models.md)；
+        - **不要**上传模型文件、私人照片或包含本机用户名的完整日志；
+        - 安全问题请走私密渠道，见 [SECURITY.md](https://github.com/mordom0404/Meteor-Master-Detecter-AI/blob/master/SECURITY.md)。
+
+  - type: input
+    id: version
+    attributes:
+      label: 引擎版本
+      description: 在哪一行/哪个 exe 上看到的？`index.py` 顶部 `VERSION` 或 `--help` 输出
+      placeholder: "2.5.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: mode
+    attributes:
+      label: 运行模式
+      options:
+        - 一次性模式（--img_directory）
+        - 一次性模式（--img_directory_list）
+        - 监听模式（--watch_folder）
+        - 打包 / 构建
+        - 其他
+    validations:
+      required: true
+
+  - type: textarea
+    id: command
+    attributes:
+      label: 复现命令
+      description: 把路径里的个人信息打码，例如 `D:/<user>/images`
+      render: shell
+      placeholder: index.exe --img_directory "D:/images" --onnx_path "D:/models/V8L_1.2.5.onnx" --no_45
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望结果 vs 实际结果
+    validations:
+      required: true
+
+  - type: input
+    id: model
+    attributes:
+      label: 模型
+      description: 文件名（不需要上传模型本身），例如 V8L_1.2.5.onnx
+    validations:
+      required: false
+
+  - type: input
+    id: environment
+    attributes:
+      label: 环境
+      description: Windows 版本 / Python 版本 / 有无 GPU / onnxruntime-directml 版本
+      placeholder: "Windows 11 24H2, Python 3.12, RTX 3060, onnxruntime-directml 1.24.4"
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: stderr 日志（可选）
+      description: 请删掉带用户名、路径、照片名的行
+      render: text
+    validations:
+      required: false

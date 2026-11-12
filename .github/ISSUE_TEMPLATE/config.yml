@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 安全问题 / 漏洞报告
+    url: https://github.com/mordom0404/Meteor-Master-Detecter-AI/security/advisories/new
+    about: 请勿在公开 issue 中披露安全漏洞细节，使用 GitHub 私密报告。
+  - name: 模型说明
+    url: https://github.com/mordom0404/Meteor-Master-Detecter-AI/blob/master/docs/models.md
+    about: 模型为什么不在仓库里、怎么用自己的模型。

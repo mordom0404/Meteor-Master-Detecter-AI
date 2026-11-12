@@ -1,0 +1,20 @@
+# 运行时依赖（引擎本体只做 ONNX 推理，不包含训练/导出工具链）
+#
+#   Windows（GPU 走 DirectML / DX12，AMD / Intel / NVIDIA 通用）：
+#       pip install -r requirements.txt
+#   macOS / Linux：
+#       pip install -r requirements.txt
+#
+# 需要和"打包环境"完全一致的版本时，用 requirements-lock.txt。
+# 训练 YOLOv8 并导出 ONNX 的 torch / ultralytics 工具链不在运行时依赖里，
+# 用法见 docs/models.md。
+
+numpy==2.2.0
+opencv-python==4.10.0.84
+pillow==12.0.0
+watchdog>=4.0,<7.0
+
+# Windows 必须用 onnxruntime-directml（带 DirectML EP），不要装标准 onnxruntime
+onnxruntime-directml==1.24.4; sys_platform == "win32"
+# macOS / Linux 用标准 onnxruntime
+onnxruntime>=1.20; sys_platform != "win32"
