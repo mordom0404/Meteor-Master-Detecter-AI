@@ -3,20 +3,23 @@
 > 目标：把仓库、构建流水线、产物和账号都调到 SignPath Foundation 能直接通过审核/签名的状态。
 > 申请入口：<https://signpath.org/apply>；条款：<https://signpath.org/terms.html>。
 
-## 0. 当前差距（2026-11-12 自查）
+## 0. 当前差距（2026-11-12 复查）
 
 | 项 | 现状 | 需要做 |
 |---|---|---|
-| 仓库 Public | ❌ 仍为 Private | 清理/发布准备完成后切 Public |
-| GitHub Release | ❌ 还没有 tag / Release | 打 `v2.6.1` tag，由 CI 产出未签名 Release |
-| Actions 全绿 | ⚠️ 未知（新 workflow 首次实跑） | 在 Actions 页确认 `CI` 与 `Build Windows (onedir)` 均成功 |
-| 仓库 2FA | ⚠️ 需确认 | GitHub Settings → Password and authentication |
-| License 识别 | ✅ MIT（`LICENSE` 已就位） | 公开后确认侧栏显示 MIT |
+| 仓库 Public | ✅ 已切 Public | — |
+| License 识别 | ✅ GitHub 识别为 MIT（API `license.spdx_id = MIT`） | 已移除 LICENSE 末尾附注（曾导致显示 NOASSERTION） |
+| CI（单测/语法） | ✅ 全绿（push run #14/#15 success） | 保持 |
+| Build Windows (onedir) | ⚠️ **首次手动触发已发起，等结果**（此前 0 次运行） | 跑通一次，确认产物结构与哈希 |
+| GitHub Release | ❌ 还没有 tag / Release | 打 `v2.6.1` tag，产出未签名 Release |
+| 仓库 2FA | ⚠️ 需你确认 | GitHub Settings → Password and authentication |
 | Code signing policy | ✅ README 已含指定原句/角色/隐私/卸载 | 发布页（Release 说明）也链接到它 |
-| exe 版本资源 | ✅ ProductName/ProductVersion/FileVersion | 用 `scripts/verify_release.ps1` 每次发版自检 |
+| exe 版本资源 | ✅ ProductName / ProductVersion / FileVersion = 2.6.1.0 | 每次发版跑 `verify_release.ps1` |
 | 模型边界 | ✅ 不入库、不入 zip、不同 Release | 每次发版跑校验脚本确认 zip 里无 `.onnx` |
-| 签名产物形态 | ✅ onedir zip（`index.dist/`） | 确认 SignPath Artifact Configuration 与 zip/目录结构匹配 |
 | SignPath 账号 / GitHub App | ❌ 未注册 | 见 §3、§4 |
+| 仓库描述 / Topics | ❌ 为空 | Settings 里补 description 与 topics（`yolo/onnxruntime/object-detection/meteor`） |
+| 依赖 PR | ⚠️ 9 个 Dependabot open PR（含 actions 大版本、watchdog 4→7） | 申请前先关闭/暂缓；`upload-artifact v7`、`checkout v7` 未经构建流程验证 |
+| 商业分发 | ⚠️ 待确认 | 若商业使用，不要走 SignPath/Certum 免费档 |
 
 ## 1. 申请前必须完成的仓库配置
 
