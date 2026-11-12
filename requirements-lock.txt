@@ -67,5 +67,5 @@ ultralytics==8.4.95
 ultralytics-thop==2.0.20
 urllib3==2.7.0
 watchdog==4.0.2
-wheel==0.45.1
+wheel==0.48.0
 zstandard==0.24.0
