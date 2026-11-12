@@ -65,7 +65,7 @@ torchvision==0.28.0
 typing_extensions==4.16.0
 ultralytics==8.4.95
 ultralytics-thop==2.0.20
-urllib3==2.7.0
+urllib3==2.8.0
 watchdog==4.0.2
 wheel==0.45.1
 zstandard==0.24.0
